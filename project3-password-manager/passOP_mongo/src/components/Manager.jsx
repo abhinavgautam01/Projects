@@ -7,34 +7,22 @@ const Manager = () => {
     const passwordRef = useRef()
     const [passwordArray, setPasswordArray] = useState([])
     const [ShowPassword, setShowPassword] = useState(false)
-  
 
-    // const getPasswords = async () => {
-    //     let req = await fetch("http://localhost:3000/")
-    //     let passwords = await req.json()
-    //     setPasswordArray(passwords)
-      
-    // }
     const getPasswords = async () => {
         try {
             let req = await fetch("http://localhost:3000/");
             if (!req.ok) throw new Error('Failed to fetch passwords');
             let passwords = await req.json();
-            console.log('Fetched passwords:', passwords);
-            let setPasswordArray
-            setPasswordArray = passwords
-            // setPasswordArray(Array.isArray(passwords) ? passwords : []);
+            
+            setPasswordArray(Array.isArray(passwords) ? passwords : []);
         } catch (error) {
             console.error('Error fetching passwords:', error);
-            // setPasswordArray([]); // Default to an empty array on error
         }
     };
-    
-    
+
+
     useEffect(() => {
         getPasswords()
-        // setPasswordArray()
-        console.log('passwordArray:', passwordArray);
     }, [])
 
 
@@ -45,56 +33,91 @@ const Manager = () => {
     const [form, setform] = useState({ site: "", username: "", password: "" })
 
     const savePassword = async () => {
-        if (form.site.length > 3 && form.username.length > 3 && form.password.length > 3) {
+        try {
+            if (form.site.length > 3 && form.username.length > 3 && form.password.length > 3) {
+                // Check if the form has an `id` (editing mode)
+                if (form.id) {
+                    
 
-            // If any such id exists in the db, delete it 
-            await fetch("http://localhost:3000/", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: form.id }) })
+                    // Remove the old entry from the array
+                    setPasswordArray(passwordArray.filter(item => item.id !== form.id));
 
-            setPasswordArray([...passwordArray, { ...form, id: uuidv4() }])
-            await fetch("http://localhost:3000/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, id: uuidv4() }) })
+                    // Delete the old entry from the database
+                    await fetch("http://localhost:3000/", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: form.id })
+                    });
+                }
 
-            // Otherwise clear the form and show toast
-            setform({ site: "", username: "", password: "" })
+                // Generate a new `id` for the saved entry and update
+                const newEntry = { ...form, id: uuidv4() };
+                setPasswordArray([...passwordArray, newEntry]);
 
+                // Save the new entry to the database
+                await fetch("http://localhost:3000/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(newEntry)
+                });
+
+                // Clear the form after saving
+                setform({ site: "", username: "", password: "" });
+                
+            } else if (
+                form.site.length < 3 ||
+                form.username.length < 3 ||
+                form.password.length < 3
+            ) {
+                alert("Invalid Entries: Site, Username, or Password must be at least 4 characters.");
+                
+            } else {
+                alert("First enter your data to be saved!");
+                
+            }
+        } catch (error) {
+            console.error("An error occurred while saving the password:", error);
         }
-        else if(form.site.length < 3 && form.username.length < 3 && form.password.length < 3 && form.site.length > 0 && form.username.length > 0 && form.password.length > 0){
-            alert("Invalid Entries :  Site/Username/Password..!")
-            alert("Check your entries again...!")
-            console.log('Error : Password not saved..!')
-        }
-        else{
-            alert("First enter your data to be saved...!")
-            console.log('Error : Password not saved..!')
-        }
-    }
+    };
+
 
 
     const deletePassword = async (id) => {
         try {
+            
+
             let c = confirm("Do you really want to delete this password..?")
             if (c) {
-                console.log("Deleting password with id :", id);
+                
                 setPasswordArray(passwordArray.filter(item => item.id !== id))
                 await fetch("http://localhost:3000/", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
 
             }
             else {
-                console.log("Deletion Cancelled...!")
+                
             }
 
         }
         catch (error) {
-            console.log("Error: ", error)
+            
         }
 
     }
 
-
     const editPassword = (id) => {
-        console.log("Editing password with id :", id);
-        setform({ ...passwordArray.filter(i => i.id === id)[0], id: id })
-        setPasswordArray(passwordArray.filter(item => item.id !== id))
-    }
+        
+
+        // Find the item to edit and set it in the form
+        const itemToEdit = passwordArray.find(item => item.id === id);
+        if (itemToEdit) {
+            setform(itemToEdit); // Load the form with the item's details
+            const updatedArray = passwordArray.filter(item => item.id !== id);
+            setPasswordArray(updatedArray);
+        } else {
+            console.error("Item not found for editing:", id);
+        }
+    };
+
 
 
 
@@ -154,17 +177,17 @@ const Manager = () => {
                                 <th className='py-2'>Website : URL</th>
                                 <th className='py-2'>Username</th>
                                 <th className='py-2'>Password
-                                <button
-                                                className='ml-2 text-sm bg-green-900 text-red-400 rounded px-2 py-1'
-                                                onClick={() => setShowPassword(!ShowPassword)}>
-                                                {ShowPassword ? '(Hide)' : '(Show)'}
-                                            </button>
+                                    <button
+                                        className='ml-2 text-sm bg-green-900 text-red-400 rounded px-2 py-1'
+                                        onClick={() => setShowPassword(!ShowPassword)}>
+                                        {ShowPassword ? '(Hide)' : '(Show)'}
+                                    </button>
                                 </th>
                                 <th className='py-2'>Actions</th>
                             </tr>
                         </thead>
                         <tbody className='bg-green-100'>
-                            {passwordArray.length>0 ? passwordArray.map((item, index) => {
+                            {passwordArray.length > 0 ? passwordArray.map((item, index) => {
                                 return <tr key={index}>
                                     <td className='py-2 border border-white text-center'>
                                         <div className='flex items-center justify-center '>
@@ -192,8 +215,7 @@ const Manager = () => {
                                     </td>
                                     <td className='py-2 border border-white text-center'>
                                         <div className='flex items-center justify-center '>
-                                            {/* <span>{item.password}</span> */}
-                                            <span>{ShowPassword ? item.password : '*'.repeat(item.password.length)}</span>
+                                            <span>{ShowPassword ? item.password : '*'.repeat(item.password?.length)}</span>
                                             <div className='lordiconcopy size-7 cursor-pointer' onClick={() => { copyText(item.password) }}>
                                                 <lord-icon
                                                     style={{ "width": "25px", "height": "25px", "paddingTop": "3px", "paddingLeft": "3px" }}
@@ -221,7 +243,7 @@ const Manager = () => {
                                     </td>
                                 </tr>
 
-                            }):<div>No Passwords to Show..!</div>}
+                            }) : <div>No Passwords to Show..!</div>}
                         </tbody>
                     </table>}
                 </div>
