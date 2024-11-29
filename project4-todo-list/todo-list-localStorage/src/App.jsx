@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+// import viteLogo from '/vite.svg'
 import './App.css'
 import Navbar from './components/Navbar'
 import { v4 as uuidv4 } from 'uuid';
