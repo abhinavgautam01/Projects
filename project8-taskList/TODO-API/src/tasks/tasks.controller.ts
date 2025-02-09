@@ -1,22 +1,22 @@
-import { log } from "console";
-import { AppDataSource } from "../..";
+import { AppDataSource } from "../../index";
 import { Task } from "./tasks.entity";
+import { instanceToPlain } from "class-transformer";
+import { Request, Response } from "express";
 
-export class TaskController {
-    constructor(private taskRepository=AppDataSource.getRepository(Task)){}
-
-    public async getAll(): Promise<Task[]>{
+class TaskController {
+    public async getAll(req: Request, res: Response): Promise<Response>{
         let allTasks: Task[]
         try {
-            allTasks = await this.taskRepository.find({
+            allTasks = await AppDataSource.getRepository(Task).find({
                 order: {
                     date: 'ASC'
                 }
             })
-            
-        } catch (errors) {
-            console.log(errors);
-            
+            allTasks = instanceToPlain(allTasks) as Task[]
+            return res.json(allTasks).status(200)
+        } catch (_errors) {
+            return res.json({error: 'Internal Server Error'}).status(500)
         }
     }
 }
+export const taskController = new TaskController()
