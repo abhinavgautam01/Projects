@@ -1,4 +1,4 @@
-import React, {FC, ReactElement} from "react";
+import React, { FC, ReactElement, useContext, useEffect } from "react";
 import {Grid, Box, Alert, LinearProgress} from "@mui/material"
 import format from "date-fns/format";
 import { TaskCounter } from "../taskCounter/taskCounter";
@@ -9,16 +9,42 @@ import { ITaskApi } from "./interfaces/ITaskApi";
 import { Status } from "../createTaskForm/enums/Status";
 import { IUpdateTask } from "../createTaskForm/interfaces/IUpdateTask";
 import { countTasks } from "./helpers/countTasks";
+import { TaskStatusChangedContext } from "../../context";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const TaskArea: FC = (): ReactElement =>{
     
+    const tasksUpdatedContext = useContext(TaskStatusChangedContext)
+
+
     const { error, isPending, data, refetch } = useQuery({
         queryKey: ['tasks'], 
         queryFn: async () => await sendApiRequest<ITaskApi[]>('http://localhost:3200/tasks', 'GET')
       });
-
-    const updateTaskMutation = useMutation({mutationFn: (data: IUpdateTask) => sendApiRequest('http://localhost:3200/tasks', 'PUT', data)});
     
+    //Not Working..!
+    // const updateTaskMutation = useMutation({mutationFn: (data: IUpdateTask) => sendApiRequest('http://localhost:3200/tasks', 'PUT', data)});
+    
+    const queryClient = useQueryClient();
+
+    const updateTaskMutation = useMutation({
+        mutationFn: (data: IUpdateTask) => sendApiRequest('http://localhost:3200/tasks', 'PUT', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+
+        },
+    });
+
+
+    useEffect(() => {
+        refetch()
+    }, [tasksUpdatedContext.updated])
+    useEffect(() => {
+        if(updateTaskMutation.isSuccess){
+            tasksUpdatedContext.toggle
+        }
+    }, [updateTaskMutation.isSuccess])
+
     function onStatusChangeHandler(e: React.ChangeEvent<HTMLInputElement>, id: string){
         updateTaskMutation.mutate({id, status: e.target.checked ? Status.inProgress: Status.todo})
     }
